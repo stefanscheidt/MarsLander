@@ -1,0 +1,16 @@
+-- Haskell Playground 1.0
+let surface = [(0 :: Int, 1500 :: Int), (1000, 2000), (2000, 500), (3500, 500), (5000, 1500), (6999, 1000)]
+
+let landingArea = Plateau 4000 5500 150
+
+let tele = Tele 2500 2700 0 0
+
+let st = status landingArea tele
+
+st
+
+let next = nextParams st
+
+show next
+
+printParams next
