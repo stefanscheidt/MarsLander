@@ -39,7 +39,7 @@ main = do
         hPutStrLn stderr (show tele)
         let st = status landingArea tele
         hPutStrLn stderr (show st)
-        let next = nextParams' st
+        let next = nextParams st
         hPutStrLn stderr (show next)
 
         -- rotate power. rotate is the desired rotation angle. power is the desired thrust power.
@@ -76,28 +76,25 @@ data Tele = Tele
 data Status
   = ToFarLeft (Int, Int)
   | ToFarRight (Int, Int)
+  | OverLandingArea (Int, Int)
+  | Landing (Int, Int)
   | FallingToFast (Int, Int)
   | FallingToSlow
   deriving Show
 
 status :: Plateau -> Tele -> Status
 status (Plateau lx1 lx2 ly) (Tele tx ty ths tvs) 
-  | tx < lx1 = ToFarLeft (ths, tvs)
-  | tx > lx2 = ToFarRight (ths, tvs)
-  | abs ths > 80 = FallingToFast (ths, tvs)
-  | otherwise = FallingToSlow
+  | tx < lx1     = ToFarLeft (ths, tvs)
+  | tx > lx2     = ToFarRight (ths, tvs)
+  | abs ths >= 5 = OverLandingArea (ths, tvs)
+  | otherwise    = Landing (ths, abs (ty - ly))
 
 nextParams :: Status -> (Int, Int)
 nextParams s = case s of
   ToFarLeft (hs, vs)  -> if hs < 0 then stop (hs, vs) else goRight 4
   ToFarRight (hs, vs) -> if hs > 0 then stop (hs, vs) else goLeft 4
-  FallingToFast s     -> stop s  
-  FallingToSlow       -> (0, 2)
-
-nextParams' :: Status -> (Int, Int)
-nextParams' s = case s of
-  ToFarLeft (hs, vs)  -> goRight 4
-  ToFarRight (hs, vs) -> goLeft 4
+  OverLandingArea s   -> stop s
+  Landing (hs, dist)  -> land hs dist
   FallingToFast s     -> stop s  
   FallingToSlow       -> (0, 2)
 
@@ -109,7 +106,7 @@ toDeg :: Double -> Int
 toDeg x = round (x * (180.0 / 3.1416))
 
 rotLeft :: Int -> Int
-rotLeft p =  toDeg $ rad
+rotLeft p =  toDeg rad
   where
     p'  = fromIntegral p
     rad = acos (3.711 / p')
@@ -124,12 +121,19 @@ goRight :: Int -> (Int, Int)
 goRight p = (rotRight p, p)
 
 rotStop :: (Int, Int) -> Int
-rotStop (hs, vs) = toDeg $ rad
-  where
-    hs' = fromIntegral hs
-    vs' = fromIntegral hs
-    s'  = sqrt (hs' * hs' + vs' * vs')
-    rad = asin (hs' / s')
+rotStop (hs, vs) 
+  | abs hs < 5 = 0
+  | otherwise  = toDeg rad
+    where
+      hs' = fromIntegral hs
+      vs' = fromIntegral hs
+      s'  = sqrt (hs' * hs' + vs' * vs')
+      rad = asin (hs' / s')
 
 stop :: (Int, Int) -> (Int, Int)
 stop (hs, vs) = (rotStop (hs, vs), 4)
+
+land :: Int -> Int -> (Int, Int)
+land hs dist 
+  | dist > 500 = (0, 0)
+  | otherwise  = (0, 4)
